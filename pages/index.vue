@@ -1,82 +1,57 @@
 <template>
-  <el-container class="user-layout">
-    <AppNavMenus
-      @handleSubMenuClick="handleSubMenuClick"
-      :categorys="category"
-      :show-menu-type="showMenuType"
-      @showMenus="toggleMenu2"
-    />
-    <el-container class="body" :style="{ marginLeft: contentMarginLeft }">
-      <AppHeader
-        @handleShowPopup="showPopup = true"
-        @handleShowMenu="toggleMenu"
-      />
-      <div class="main" v-loading="loading">
-        <affiche />
-        <nav-ranking-list :data="navRanking" />
-
-        <div class="website-wrapper" v-for="item in data" :key="item.name">
-            <p class="website-title" :id="item._id">{{ item.name }}</p>
-            <app-nav-list :list="item.list" />
-          </div>
+  <user-layout
+    :categorys="categorys"
+    @click="findNav($event.index)"
+    @handleSubMenuClick="handleSubMenuClick"
+  >
+    <Affiche />
+    <section class="main" v-loading="loading">
+      <div class="website-wrapper" v-for="item in data" :key="item.name">
+        <p class="website-title" :id="item._id">{{ item.name }}</p>
+        <WebsiteList :list="item.list" />
       </div>
-    </el-container>
+    </section>
+    <!-- <Toolbar @addWebsite="dialogFormVisible=true" /> -->
 
-    <AddNavPopup :show.sync="showPopup" />
-    <CustomerServiceBtn @showLog="showLog = true" />
-    <AppLog :show="showLog" @closeLog="showLog = false" />
-  </el-container>
+  </user-layout>
 </template>
 
 <script>
-import AppNavList from "../components/AppNavList";
+import WebsiteList from "~/components/WebsiteList";
+import Toolbar from "~/components/Toolbar";
+import userLayout from "~/layouts/user-layout";
+import Affiche from "~/components/Affiche";
 
-
+import axios from "~/plugins/axios";
 import api from "~/api";
-import AppSearch from "../components/AppSearch";
-import CustomerServiceBtn from "../components/CustomerServiceBtn";
-import AppLog from "../components/AppLog";
-import layoutMixin from "../mixins/layoutMixin";
-import NavRanking from "../components/NavRanking";
-import axios from "../plugins/axios";
-import {API_NAV_RANKING} from "../api";
-import NavRankingList from "../components/NavRankingList";
-import Affiche from "../components/Affiche";
 export default {
-  mixins: [layoutMixin],
-  layout: 'second',
   components: {
+    userLayout,
     Affiche,
-    NavRankingList,
-    NavRanking,
-    AppLog,
-    CustomerServiceBtn,
-    AppSearch,
-    AppNavList,
+    WebsiteList,
+    Toolbar,
   },
   data() {
     return {
       loading: false,
+      isDrawer: false,
       active: "［前端］热门推荐",
       data: [],
       categorys: [],
-      navRanking: {
-        view: [],
-        star: [],
-        news: []
-      },
+      defaultOpeneds: ["0"],
       selfIndex: 0,
-      isLeftbar: true
+      carouselActive: 0,
+      isLeftbar: true,
     };
   },
-
   methods: {
     async getCategoryList() {
-      const { data: categorys } = await this.$api.getCategoryList();
-      this.categorys = categorys;
+      const { data } = await this.$api.getCategoryList();
+      this.categorys = data.data;
 
-      if (Array.isArray(categorys)) {
-        const categoryId = categorys[0]._id;
+      if (this.categorys.length) {
+        const { children } = this.categorys.slice(0, 1)[0];
+        const categoryId = children[0]._id;
         this.findNav(categoryId);
       }
     },
@@ -91,73 +66,65 @@ export default {
         }
       }
     },
+    async findNav(id) {
+      this.loading = true;
+      const data = await this.$api.findNav(id);
+      this.data = data;
+      this.loading = false;
+    },
+    async handleSubMenuClick(parentId, id) {
+      await this.findNav(parentId)
+      document.getElementById(id).scrollIntoView()
+    },
   },
-  mounted() {
-    this.$store.commit('saveCategory', this.categorys)
-  },
-  async asyncData({ store }) {
-    const [{ data: categorys }, { data: navRanking }] = await Promise.all([
-      api.getCategoryList(),
-      axios.get(API_NAV_RANKING)
-    ])
+  async asyncData() {
+    const { data: categorys } = await api.getCategoryList()
 
-
-    const id = store.state.seletedMenuParentId || categorys[0]._id;
-    const { data } = await api.findNav(id);
+    const id = categorys[0]._id;
+    const websites = await api.findNav(id)
     return {
       categorys,
-      navRanking,
-      data
+      data: websites
     };
   },
+  mounted() {
+    window.onresize = () => {
+      return (() => {
+        window.screenWidth = document.body.clientWidth;
+        if (window.screenWidth < 481) {
+          this.isLeftbar = false;
+        } else {
+          this.isLeftbar = true;
+        }
+      })();
+    };
+    window.onresize();
+  },
+  created() {
+    console.log(process.env.navUrl, "process.env");
+  }
 };
 </script>
 
-<style lang="scss">
-
-.el-container {
-  flex-direction: column;
+<!-- Add "scoped" attribute to limit CSS to this component only -->
+<style lang="scss" scoped>
+.el-dialog {
+  min-width: 320px;
 }
-.user-layout {
-  position: relative;
-  .footer {
-    position: fixed;
-    left: 200px;
-    right: 0;
-    bottom: 0;
-    font-size: 14px;
-    color: #999;
-  }
-  /deep/ .el-submenu__title i {
-    color: #fff;
-  }
-
-  .body {
-    margin-left: 0;
-  }
+.el-submenu .el-menu-item {
+  padding: 0;
 }
-
-
-/deep/ .el-menu--popup-right-start {
-  height: 500px !important;
-  overflow: auto;
+.el-menu-item > a {
+  color: rgb(107, 115, 134);
+  display: block;
+  width: 100%;
+  height: 100%;
 }
-body {
-  .el-menu--popup-right-start {
-    background-color: #fff !important;
-    .el-menu-item {
-      background-color: #fff !important;
-      color: #333 !important;
-      &:hover {
-        background-color: #ecf5ff !important;
-      }
-    }
-  }
+.el-menu-item.is-active > a {
+  color: #fff;
 }
-
-.main {
-  padding: 20px;
-  position: relative;
+.csz {
+  margin-right: 5px;
 }
 
 
@@ -171,4 +138,10 @@ body {
     border-top-right-radius: 15px;
   }
 }
+
+.enpty {
+  font-size: 18px;
+  text-align: center;
+}
+
 </style>

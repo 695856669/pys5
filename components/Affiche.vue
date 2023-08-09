@@ -4,6 +4,7 @@
     height="30px"
     direction="vertical"
     indicator-position="none"
+    :setActiveItem="carouselActive"
   >
     <el-carousel-item>
       <p class="medium">
@@ -47,16 +48,13 @@ export default {
 
 <style lang="scss" scoped>
 .affiche {
-  width: auto;
+  width: 100%;
   font-size: 14px;
   background: #fff;
   border-radius: 5px;
   padding: 5px 15px;
   display: flex;
   align-items: center;
-  p.medium {
-    margin: 0;
-  }
   i {
     font-size: 18px;
     font-weight: bold;

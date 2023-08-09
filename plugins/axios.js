@@ -29,7 +29,6 @@ myAxios.interceptors.request.use(function (config) {
   }
   return config;
 }, function (error) {
-
   return Promise.reject(error);
 });
 
@@ -40,9 +39,7 @@ myAxios.interceptors.response.use(function (response) {
   if(process.browser){
     errorHandle(error.response.status)
   }
-  return Promise.reject(error.response?.data?.message);
+  return Promise.reject(error.response.data.message);
 });
-
-myAxios.defaults.timeout = 6000
 
 export default myAxios
